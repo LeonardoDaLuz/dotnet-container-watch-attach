@@ -1,12 +1,15 @@
 {
-  "name": "dotnetwatchattach",
-  "displayName": ".NET Watch Attach",
+  "name": "dotnetcontainerwatchattach",
+  "displayName": ".NET Container Watch Attach",
   "description": "Wrapper for coreclr attach which automatically attaches when a given program gets launched by `dotnet watch`.",
-  "version": "0.2.7",
-  "publisher": "Trottero",
+  "version": "0.2.8",
+  "publisher": "LeoLuz",
   "contributors": [
     {
       "name": "Niels Witte"
+    },
+    {
+      "name": "Trottero"
     }
   ],
   "repository": {
@@ -26,13 +29,13 @@
     "ms-dotnettools.csharp"
   ],
   "activationEvents": [
-    "onDebugResolve:dotnetwatchattach"
+    "onDebugResolve:dotnetcontainerwatchattach"
   ],
   "main": "./out/extension.js",
   "contributes": {
     "debuggers": [
       {
-        "type": "dotnetwatchattach",
+        "type": "dotnetcontainerwatchattach",
         "label": ".NET Watch Attach",
         "configurationAttributes": {
           "launch": {
@@ -51,16 +54,28 @@
               "task": {
                 "type": "string",
                 "description": "The label of a dotnet watch task to run as defined in `tasks.json` \n This task will automatically be run when the debug session starts, and terminated when the debug session ends. \n NOTE: It is not required to set `isBackground: true` for this task."
+              },
+              "pipeTransport": {
+                "type": "object",
+                "description": "Pipe transport configuration for remote debugging. When configured, this will be used instead of `processName` for attaching to the debugger."
+              },
+              "sourceFileMap": {
+                "type": "object",
+                "description": "Maps source file paths between the local machine and the remote machine or container."
+              },
+              "containerName": {
+                "type": "string",
+                "description": "Container name or ID for Docker container debugging. Used to check if the process is running inside the container using `docker top`."
               }
             }
           }
         },
         "configurationSnippets": [
           {
-            "label": ".NET: Watch Attach",
+            "label": ".NET: ContainerWatch Attach",
             "description": "Wrapper for coreclr attach which automatically attaches upon recompilation of your .NET application",
             "body": {
-              "type": "dotnetwatchattach",
+              "type": "dotnetcontainerwatchattach",
               "request": "launch",
               "name": ".NET Watch Attach",
               "args": {

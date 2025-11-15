@@ -10,19 +10,19 @@ let watchAttachService: WatchAttach = new WatchAttach();
 const watchAttachLogger = WatchAttachLogger.instance;
 
 export function activateWatchAttach(context: vscode.ExtensionContext) {
-  watchAttachLogger.log('Activating Watch Attach - Thank you for using this plugin!');
+  watchAttachLogger.log('Activating Container Watch Attach - Thank you for using this plugin!');
   watchAttachLogger.log(
-    'If you encounter any issues, report them at: https://github.com/Trottero/dotnet-watch-attach'
+    'If you encounter any issues, report them at: https://github.com/LeonardoDaLuz/dotnet-container-watch-attach'
   );
 
   const provider = new WatchAttachConfigurationProvider();
   context.subscriptions.push(
-    vscode.debug.registerDebugConfigurationProvider('dotnetwatchattach', provider)
+    vscode.debug.registerDebugConfigurationProvider('dotnetcontainerwatchattach', provider)
   );
 
   context.subscriptions.push(
     vscode.debug.registerDebugAdapterDescriptorFactory(
-      'dotnetwatchattach',
+      'dotnetcontainerwatchattach',
       new InlineDebugAdapterFactory()
     )
   );
