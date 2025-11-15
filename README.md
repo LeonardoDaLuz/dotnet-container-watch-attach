@@ -1,4 +1,4 @@
-# .NET Container Watch Attach
+# .NET Container Watch Attach Debugger
 
 [![.github/workflows/ci.yml](https://github.com/Trottero/dotnet-watch-attach/actions/workflows/ci.yml/badge.svg)](https://github.com/Trottero/dotnet-watch-attach/actions/workflows/ci.yml)
 
@@ -92,8 +92,7 @@ ENTRYPOINT ["dotnet", "watch", "run", "${workspaceFolder}/TestesDebug.csproj", "
         "pipeCwd": "${workspaceFolder}"
       },
       "sourceFileMap": {
-        "/app": "${workspaceFolder}",
-        "/usr/src/app": "${workspaceFolder}"
+        "/app": "${workspaceFolder}"
       },
       "args": {
         "env": {
@@ -176,6 +175,8 @@ Start debugging once the container is already running. If you want the container
 - ✅ Retry mechanism with configurable polling interval
 
 ## Known Issues
+
+- Debugging with containers has only been tested on Linux.
 
 - There is a race condition where the extension checks if the process exists, and if it does it will try to start a debug session moments later. If during that time the process is killed (by rebuilding for example) the debugger will fail to attach and terminate.
 
