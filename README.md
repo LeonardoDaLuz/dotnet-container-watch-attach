@@ -74,6 +74,34 @@ ENTRYPOINT ["dotnet", "watch", "run", "${workspaceFolder}/TestesDebug.csproj", "
 
 **Note about entry:** I'm using `watch run` inside container so that the build changes when codebase change. The appilcation will restart and the extension will re-attach automatically and fast.
 
+**Important**: Ignore the folders obj and bin in volume to avoid vscode lsp conflicts. See docker-compose file example bellow:
+``docker-compose.yml
+version: '3.8'
+services:
+  back:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports: 
+      # Choose the ports as you prefer.
+      - "8080:8080"
+      - "8081:8081"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+    volumes:
+      # exposes codebase files to be watched by the watch run
+      - .:/src
+      # This folders bellow needs to be ignored
+      - /src/obj
+      - /src/bin
+    # Holds container running
+    stdin_open: true
+    tty: true
+
+
+
+
 ```
 // launch.json
 {
