@@ -2,22 +2,29 @@
   "name": "dotnetcontainerwatchattach",
   "displayName": ".NET Container Watch Attach",
   "description": "Wrapper for coreclr attach which automatically attaches when a given program gets launched by `dotnet watch`.",
-  "version": "0.2.8",
-  "publisher": "LeoLuz",
+  "version": "0.2.9",
+  "publisher": "Leonardodaluzpinto",
   "contributors": [
     {
       "name": "Niels Witte"
     },
     {
       "name": "Trottero"
+    }, 
+    {
+      "name": "hackathi"
+    },
+    {
+      "name": "loganbenjamin"
     }
   ],
+  "homepage": "https://github.com/LeonardoDaLuz/dotnet-container-watch-attach",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Trottero/dotnet-watch-attach"
+    "url": "https://github.com/LeonardoDaLuz/dotnet-container-watch-attach"
   },
   "bugs": {
-    "url": "https://github.com/Trottero/dotnet-watch-attach/issues"
+    "url": "https://github.com/LeonardoDaLuz/dotnet-container-watch-attach/issues"
   },
   "engines": {
     "vscode": "^1.61.0"
@@ -26,10 +33,10 @@
     "Debuggers"
   ],
   "extensionDependencies": [
-    "ms-dotnettools.csharp"
   ],
   "activationEvents": [
-    "onDebugResolve:dotnetcontainerwatchattach"
+    "onDebugResolve:dotnetcontainerwatchattach",
+    "onStartupFinished"
   ],
   "main": "./out/extension.js",
   "contributes": {

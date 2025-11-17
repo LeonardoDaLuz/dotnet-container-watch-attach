@@ -145,19 +145,51 @@ export class WatchAttach implements Disposable {
           ...defaultCoreClrDebugConfiguration,
         };
 
-        // Add pipeTransport if present, otherwise use processName
+        // Clean up any conflicting process identification properties from args
+        // We'll set these explicitly below
+        delete debugConfig.processId;
+        delete debugConfig.processName;
+
+        // Add pipeTransport if present, otherwise use processId (as string for Cursor compatibility)
         if (hasPipeTransport) {
           debugConfig.pipeTransport = this.config.pipeTransport || this.config.args?.pipeTransport;
           // Use processName when using pipeTransport (standard property for pipeTransport configurations)
           debugConfig.processName = this.config.program;
         } else {
-          debugConfig.processName = this.config.program;
+          // Get processId and use it as string (Cursor requires processId as string)
+          this._watchAttachLogger.log(`Searching for process: ${this.config.program}`);
+          const processId = this.getProcessId(this.config.program);
+          if (processId !== null) {
+            // Use processId as string (Cursor requires string format)
+            debugConfig.processId = processId.toString();
+            // Remove processName to avoid conflicts
+            delete debugConfig.processName;
+            this._watchAttachLogger.log(`✓ Found processId: ${processId} for process: ${this.config.program}`);
+            this._watchAttachLogger.log(`Using processId: "${processId.toString()}" (as string) in debug configuration`);
+          } else {
+            // Fallback to processName if we can't get the PID
+            debugConfig.processName = this.config.program;
+            delete debugConfig.processId;
+            this._watchAttachLogger.log(`✗ Could not find processId for: ${this.config.program}`);
+            this._watchAttachLogger.log(`Using processName: ${this.config.program} as fallback`);
+          }
+        }
+        
+        // Add Cursor-compatible properties
+        if (!debugConfig.justMyCode) {
+          debugConfig.justMyCode = true;
+        }
+        if (!debugConfig.internalConsoleOptions) {
+          debugConfig.internalConsoleOptions = 'openOnSessionStart';
         }
 
         // Add sourceFileMap if present (can be in config or args)
         if (this.config.sourceFileMap || this.config.args?.sourceFileMap) {
           debugConfig.sourceFileMap = this.config.sourceFileMap || this.config.args?.sourceFileMap;
         }
+
+        // Log the final debug configuration for debugging
+        this._watchAttachLogger.log(`Debug configuration: ${JSON.stringify(debugConfig, null, 2)}`);
 
         // Start coreclr debug session.
         return from(
@@ -191,6 +223,129 @@ export class WatchAttach implements Disposable {
         ).pipe(mapTo(this._errorCount));
       })
     );
+  }
+
+  public getProcessId(programName: string): number | null {
+    // Check if pipeTransport is configured and containerName is provided
+    const hasPipeTransport = !!(this.config.pipeTransport || this.config.args?.pipeTransport);
+    const containerName = this.config.containerName;
+
+    // If using pipeTransport with container, get PID from container
+    if (hasPipeTransport && containerName) {
+      try {
+        const args = ['top', containerName];
+        const result = execFileSync('docker', args, {
+          encoding: 'utf8',
+        });
+        
+        // Parse docker top output to find PID
+        // Format: PID USER TIME COMMAND
+        const lines = result.split('\n').filter(line => line.trim());
+        const programNamePattern = new RegExp(programName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+        
+        for (const line of lines) {
+          if (programNamePattern.test(line)) {
+            const parts = line.trim().split(/\s+/);
+            const pid = parseInt(parts[0], 10);
+            if (!isNaN(pid)) {
+              this._watchAttachLogger.log(`Found container process '${programName}' with PID: ${pid}`);
+              return pid;
+            }
+          }
+        }
+        this._watchAttachLogger.log(`ERROR: Could not find process '${programName}' in container '${containerName}'`);
+        this._watchAttachLogger.log(`docker top output:\n${result}`);
+        return null;
+      } catch (error: any) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        this._watchAttachLogger.log(`ERROR: Failed to get container process PID: ${errorMessage}`);
+        return null;
+      }
+    }
+
+    // Get PID for local processes using ps
+    if (process.platform === 'win32') {
+      try {
+        // Use wmic to get process ID by name
+        const args = ['process', 'where', `name="${programName}"`, 'get', 'ProcessId', '/format:value'];
+        const result = execFileSync('wmic', args, {
+          encoding: 'utf8',
+        });
+        const pidMatch = result.match(/ProcessId=(\d+)/);
+        if (pidMatch) {
+          const pid = parseInt(pidMatch[1], 10);
+          this._watchAttachLogger.log(`Found Windows process '${programName}' with PID: ${pid}`);
+          return pid;
+        }
+        this._watchAttachLogger.log(`ERROR: Could not find Windows process '${programName}'`);
+        this._watchAttachLogger.log(`wmic output:\n${result}`);
+        return null;
+      } catch (error: any) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        this._watchAttachLogger.log(`ERROR: Failed to get Windows process PID: ${errorMessage}`);
+        return null;
+      }
+    } else if (process.platform === 'linux' || process.platform === 'darwin') {
+      try {
+        // Use ps -eo pid,comm to get exact process name and PID
+        const args = ['-eo', 'pid,comm'];
+        const result = execFileSync('ps', args, {
+          encoding: 'utf8',
+        });
+        
+        this._watchAttachLogger.log(`ps command: ps ${args.join(' ')}`);
+        this._watchAttachLogger.log(`ps output:\n${result}`);
+        
+        // Parse output: format is "PID COMM" (space-separated)
+        // comm shows only the executable name (15 chars max, truncated if longer)
+        const lines = result.split('\n');
+        const programNameLower = programName.toLowerCase();
+        
+        // Remove .exe extension if present (Linux/Mac don't use .exe)
+        const programNameClean = programName.replace(/\.exe$/i, '');
+        const programNameCleanLower = programNameClean.toLowerCase();
+        
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed || trimmed.startsWith('PID')) {
+            // Skip header or empty lines
+            continue;
+          }
+          
+          // Split by whitespace - first part is PID, rest is comm
+          const parts = trimmed.split(/\s+/);
+          if (parts.length < 2) {
+            continue;
+          }
+          
+          const pidStr = parts[0];
+          const comm = parts.slice(1).join(' ').toLowerCase();
+          
+          // Match if comm contains the program name (case insensitive)
+          if (comm.includes(programNameLower) || comm.includes(programNameCleanLower)) {
+            const pid = parseInt(pidStr, 10);
+            if (!isNaN(pid)) {
+              this._watchAttachLogger.log(`✓ PROCESS FOUND! PID: ${pid} for '${programName}'`);
+              this._watchAttachLogger.log(`  Matched comm: ${comm}`);
+              this._watchAttachLogger.log(`  Full line: ${trimmed}`);
+              return pid;
+            }
+          }
+        }
+        
+        // If we get here, we didn't find the process
+        this._watchAttachLogger.log(`ERROR: Could not find process '${programName}' in ps output`);
+        this._watchAttachLogger.log(`Searched for: '${programName}' or '${programNameClean}'`);
+        return null;
+      } catch (psError: any) {
+        const errorMessage = psError instanceof Error ? psError.message : String(psError);
+        this._watchAttachLogger.log(`ERROR: Failed to execute ps command: ${errorMessage}`);
+        return null;
+      }
+    }
+    
+    this._watchAttachLogger.log(`ERROR: Unsupported platform: ${process.platform}`);
+    return null;
   }
 
   public applicationRunning(programName: string): boolean {

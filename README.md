@@ -7,7 +7,8 @@
 `.NET Container Watch Attach` is an extension which supports developers working with the `dotnet watch` ([link](https://docs.microsoft.com/en-us/aspnet/core/tutorials/dotnet-watch?view=aspnetcore-5.0)) command. It is basically a wrapper around the `coreclr` debugger from the C# extension which watches your process list for a given process name, with added support for debugging applications running in Docker containers via `pipeTransport`.
 
 - [Original Extension](https://marketplace.visualstudio.com/items?itemName=Trottero.dotnetwatchattach)
-- [This Fork Extension](https://marketplace.visualstudio.com/items?itemName=LeoLuz.dotnetcontainerwatchattach)
+- [This Fork Extension](https://marketplace.visualstudio.com/items?itemName=Leonardodaluzpinto.dotnetcontainerwatchattach)
+- [Discord Community](https://discord.gg/SUmWddWT7B)
 
 ## Requirements
 
@@ -57,7 +58,7 @@ FROM mcr.microsoft.com/dotnet/sdk:9.0
 
 WORKDIR /src
 
-# Install vsdbg (debugger do VS Code) e utilidades
+# Install vsdbg (debugger do VS Code) e utilities
 RUN apt-get update && \
     apt-get install -y curl unzip procps && \
     curl -sSL https://aka.ms/getvsdbgsh | bash /dev/stdin -v latest -l /vsdbg && \

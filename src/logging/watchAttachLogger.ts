@@ -20,6 +20,9 @@ export class WatchAttachLogger {
     // Get the current time
     const now = new Date();
     const time = `${now.getHours()}:${now.getMinutes()}:${now.getSeconds()}`;
-    this.channel.appendLine(`[WATCH ATTACH] [${time}] ${message}`);
+    const logMessage = `[WATCH ATTACH] [${time}] ${message}`;
+    this.channel.appendLine(logMessage);
+    // Also log to console for debugging
+    console.log(logMessage);
   }
 }
