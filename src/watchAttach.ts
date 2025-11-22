@@ -159,6 +159,7 @@ export class WatchAttach implements Disposable {
           // Get processId and use it as string (Cursor requires processId as string)
           this._watchAttachLogger.log(`Searching for process: ${this.config.program}`);
           const processId = this.getProcessId(this.config.program);
+          this._watchAttachLogger.log(`ProcessId Found: ${processId}`);
           if (processId !== null) {
             // Use processId as string (Cursor requires string format)
             debugConfig.processId = processId.toString();
