@@ -202,6 +202,7 @@ Start debugging once the container is already running. If you want the container
 - ✅ Source file mapping for container/remote debugging
 - ✅ Automatic task execution (disabled when using `pipeTransport`)
 - ✅ Retry mechanism with configurable polling interval
+- ✅ It works with Cursor, which works with netcoredbg.
 
 ## Known Issues
 
