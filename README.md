@@ -1,27 +1,80 @@
 # .NET Container Watch Attach Debugger
 
-[![.github/workflows/ci.yml](https://github.com/Trottero/dotnet-watch-attach/actions/workflows/ci.yml/badge.svg)](https://github.com/Trottero/dotnet-watch-attach/actions/workflows/ci.yml)
+`.NET Container Watch Attach` is an extension which supports developers to debug with the `dotnet watch --no-hot-reload` ([link](https://docs.microsoft.com/en-us/aspnet/core/tutorials/dotnet-watch?view=aspnetcore-5.0)) command. It is basically a wrapper around the `coreclr` debugger from the C# extension which watches your process list for a given process name, and every time it restarts, it automatically reattaches. Also support debugging applications running in Docker containers via `pipeTransport`.
+
+It works on Windows and Linux. It hasn't been tested on Mac yet.
+It Works with Vscode and Cursor
 
 > **Note:** This is a fork of the original [dotnet-watch-attach](https://github.com/Trottero/dotnet-watch-attach) extension by [Trottero](https://github.com/Trottero), with added support for debugging applications running in Docker containers via `pipeTransport`.
 
-It works on Windows and Linux. It hasn't been tested on Mac yet.
-
-`.NET Container Watch Attach` is an extension which supports developers working with the `dotnet watch` ([link](https://docs.microsoft.com/en-us/aspnet/core/tutorials/dotnet-watch?view=aspnetcore-5.0)) command. It is basically a wrapper around the `coreclr` debugger from the C# extension which watches your process list for a given process name, with added support for debugging applications running in Docker containers via `pipeTransport`.
 
 - [Original Extension](https://marketplace.visualstudio.com/items?itemName=Trottero.dotnetwatchattach)
 - [This Fork Extension](https://marketplace.visualstudio.com/items?itemName=Leonardodaluzpinto.dotnetcontainerwatchattach)
 - [Discord Community](https://discord.gg/SUmWddWT7B)
 
-## Requirements
-
-- Microsofts C# extension ([link](https://marketplace.visualstudio.com/items?itemName=ms-dotnettools.csharp))
-
-## Configuration
+## Quick start
 
 ### Local Development (without containers)
 
-Configuration is simple, since `0.2.0` you will only need a single task which defines a command that uses the `dotnet watch` command. This task is then used in the `dotnetcontainerwatchattach` debug configuration. For the `task` property, use the label for the earlier defined task. The `coreclr` attach task is fully configurable using the `args` property.
+#### Debug Attach
 
+1) Run your application with `dotnet watch run --no-hot-reload` (this flag means that the aplication will restart on each change instead of update binary part in memory)
+
+2) Put this configuration in launch.json (Don't forget to replace <startup_project_name>):
+```
+// launch.json
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "dotnetcontainerwatchattach",
+      "request": "launch",
+      "name": ".NET Container Watch Attach",
+      "args": { // Args to pass to coreclr attach
+        "env": {
+          "ASPNETCORE_ENVIRONMENT": "Development"
+        }
+      },
+      "program": "<startup-project-name>.exe" // for windows Or "<startup-project-name>" for linux
+    }
+  ]
+}
+```
+3) Run debug
+
+#### Debug Launch
+
+1) If you want the application to launch instead of just attaching, configure a task for that:
+```
+// tasks.json
+{
+  "tasks": [
+    {
+      "label": "watchTaskName",
+      "command": "dotnet",
+      "type": "process",
+       "linux": {
+        "options": {
+          "env": {
+            // The FileSystemWatcher used by default wasnt working for me on linux, so I switched to the polling watcher.
+            "DOTNET_USE_POLLING_FILE_WATCHER": "true"
+          }
+        }
+      },
+      "args": [
+        "watch",
+        "run",
+        "${workspaceFolder}/<path-to-project>.csproj",
+        "--no-hot-reload", //necessary to application restart on codebase changes
+        "/property:GenerateFullPaths=true",
+        "/consoleloggerparameters:NoSummary"
+      ],
+      "problemMatcher": "$msCompile"
+    }
+  ]
+}
+```
+2) Call taskName in launch.json:
 ```
 // launch.json
 {
@@ -42,17 +95,19 @@ Configuration is simple, since `0.2.0` you will only need a single task which de
   ]
 }
 ```
+3) Run debug.
 
-### Container Development (with Docker)
+### Attach to a docker container (Only works with Vscode, Only tested in Linux)
 
 When debugging applications running in Docker containers, you can use `pipeTransport` to connect to the debugger inside the container. The extension will automatically check if the process is running inside the container using `docker top`.
-
-**Important:** The `vsdbg` debugger must be installed inside the container for debugging to work. See the Dockerfile example below.
+ Container mode does not work in cursor, but you can slip the cursor inside the container using the Dev Containers extension and debug as if you were on the host.
+**Important:** In vscode the `vsdbg` debugger must be installed inside the container for debugging to work. See the Dockerfile example below.
 
 #### Dockerfile Example
 
 Here's an example Dockerfile that installs `vsdbg` and sets up the environment for debugging:
 
+1) Create dockerfile:
 ```dockerfile
 # Dockerfile for development with watch + debug
 
@@ -78,6 +133,8 @@ ENTRYPOINT ["dotnet", "watch", "run", "${workspaceFolder}/TestesDebug.csproj", "
 **Note about entry:** I'm using `watch run` inside container so that the build changes when codebase change. The appilcation will restart and the extension will re-attach automatically and fast.
 
 **Important**: Ignore the folders obj and bin in volume to avoid vscode lsp conflicts. See docker-compose file example bellow:
+
+2) Create docker-compose.yml:
 ``docker-compose.yml
 version: '3.8'
 services:
@@ -102,9 +159,7 @@ services:
     stdin_open: true
     tty: true
 
-
-
-
+3) Create launch.json:
 ```
 // launch.json
 {
@@ -115,10 +170,10 @@ services:
       "request": "launch",
       "name": ".NET Container Watch Attach (Docker)",
       "program": "<startup-project-name>",
-      "containerName": "my-app-container",
+      "containerName": "<my-app-container>", //ex: "containerName": "my-app-container",
       "pipeTransport": {
         "pipeProgram": "docker",
-        "pipeArgs": ["exec", "-i", "my-app-container"],
+        "pipeArgs": ["exec", "-i", "<my-app-container-name>"], //ex: "pipeArgs": ["exec", "-i", "my-app-container"],
         "debuggerPath": "/vsdbg/vsdbg",
         "pipeCwd": "${workspaceFolder}"
       },
@@ -134,27 +189,6 @@ services:
   ]
 }
 ```
-Start debugging once the container is already running. If you want the container to run when debugging starts, specify a task that will execute `docker run` or `docker compose up`. Like this>
-```
-// tasks.json
-    ...
-    {
-      "label": "StartContainer",
-      "command": "docker",
-      "type": "process",
-      "linux": {
-        "options": {
-          "env": {
-            "DOTNET_USE_POLLING_FILE_WATCHER": "true"
-          }
-        }
-      },
-      "args": ["compose", "up", "--build"],
-      "problemMatcher": "$msCompile"
-    },
-    ...
-```
-
 #### Configuration Properties
 
 - **`program`**: Program to attach to. This is usually the name of the startup `.csproj` file, with for windows the `.exe` extension appended. e.g. to debug the process from `dotnet watch run weather.csproj`, set this to `weather.exe` (windows) or `weather` (linux).
@@ -164,35 +198,9 @@ Start debugging once the container is already running. If you want the container
 - **`sourceFileMap`**: (Optional) Maps source file paths between the local machine and the remote machine or container. This is useful when debugging applications running in containers where the source file paths differ from the local development environment.
 - **`args`**: (Optional) Arguments passed to underlying coreclr attach configuration.
 
-```
-// tasks.json
-{
-  "tasks": [
-    {
-      "label": "watch",
-      "command": "dotnet",
-      "type": "process",
-       "linux": {
-        "options": {
-          "env": {
-            // The FileSystemWatcher used by default wasnt working for me on linux, so I switched to the polling watcher.
-            "DOTNET_USE_POLLING_FILE_WATCHER": "true"
-          }
-        }
-      },
-      "args": [
-        "watch",
-        "run",
-        "${workspaceFolder}/<path-to-project>.csproj",
-        "--no-hot-reload", //necessary to application restart on codebase changes
-        "/property:GenerateFullPaths=true",
-        "/consoleloggerparameters:NoSummary"
-      ],
-      "problemMatcher": "$msCompile"
-    }
-  ]
-}
-```
+4) Run the container with docker compose up
+
+5) Run debug
 
 ---
 
@@ -208,9 +216,6 @@ Start debugging once the container is already running. If you want the container
 
 ## Known Issues
 
-- Debugging with containers has only been tested on Linux.
-
-- Normal debug tested with Windows and Linux. 
 - Might be issues on Mac. The original ran on Mac, but I haven't been able to test it after my changes. I modified the part that obtains the process ID based on the process name. If any Mac user could look into this for me, I would appreciate it.
 - There is a race condition where the extension checks if the process exists, and if it does it will try to start a debug session moments later. If during that time the process is killed (by rebuilding for example) the debugger will fail to attach and terminate.
 

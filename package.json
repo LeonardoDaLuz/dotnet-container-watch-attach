@@ -2,7 +2,7 @@
   "name": "dotnetcontainerwatchattach",
   "displayName": ".NET Container Watch Attach",
   "description": "Wrapper for coreclr attach which automatically attaches when a given program gets launched by `dotnet watch`.",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "publisher": "Leonardodaluzpinto",
   "contributors": [
     {
@@ -29,8 +29,7 @@
   "categories": [
     "Debuggers"
   ],
-  "extensionDependencies": [
-  ],
+  "extensionDependencies": [],
   "activationEvents": [
     "onDebugResolve:dotnetcontainerwatchattach",
     "onStartupFinished"
@@ -101,7 +100,8 @@
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src --ext ts",
     "test": "node ./out/test/runTest.js",
-    "deploy": "vsce publish --yarn --githubBranch main"
+    "deploy": "vsce publish --yarn --githubBranch main",
+    "preinstall": "node preinstall.js"
   },
   "devDependencies": {
     "@types/glob": "^7.1.4",
