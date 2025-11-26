@@ -2,7 +2,7 @@
   "name": "dotnetcontainerwatchattach",
   "displayName": ".NET Container Watch Attach",
   "description": "Wrapper for coreclr attach which automatically attaches when a given program gets launched by `dotnet watch`.",
-  "version": "0.3.0",
+  "version": "0.3.2",
   "publisher": "Leonardodaluzpinto",
   "contributors": [
     {
@@ -76,18 +76,18 @@
         },
         "configurationSnippets": [
           {
-            "label": ".NET: ContainerWatch Attach",
+            "label": ".NET: Container Watch Attach",
             "description": "Wrapper for coreclr attach which automatically attaches upon recompilation of your .NET application",
             "body": {
               "type": "dotnetcontainerwatchattach",
               "request": "launch",
-              "name": ".NET Watch Attach",
+              "name": ".NET Container Watch Attach",
               "args": {
                 "env": {
                   "ASPNETCORE_ENVIRONMENT": "Development"
                 }
               },
-              "program": "<startup-project-name>.exe"
+              "program": "<project_name>.exe"
             }
           }
         ]

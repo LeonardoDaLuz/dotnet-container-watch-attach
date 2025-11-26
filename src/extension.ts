@@ -14,6 +14,13 @@ export function activate(context: vscode.ExtensionContext) {
     console.error('[.NET Container Watch Attach] Error during activation:', error);
     throw error;
   }
+  if (process.platform === 'darwin') {
+    vscode.window.showWarningMessage(
+        '⚠️ This extension has not been tested on macOS and may not work correctly. ' +
+        'Please report any issues you encounter on GitHub.',
+        'OK'
+    );
+  }
 }
 
 // this method is called when your extension is deactivated

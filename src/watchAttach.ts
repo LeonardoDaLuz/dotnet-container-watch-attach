@@ -267,19 +267,58 @@ export class WatchAttach implements Disposable {
     // Get PID for local processes using ps
     if (process.platform === 'win32') {
       try {
-        // Use wmic to get process ID by name
-        const args = ['process', 'where', `name="${programName}"`, 'get', 'ProcessId', '/format:value'];
-        const result = execFileSync('wmic', args, {
+        // Use PowerShell Get-Process to get process ID by name
+        // Remove .exe extension if present for matching
+        const processNameClean = programName.replace(/\.exe$/i, '');
+        const psCommand = `Get-Process -Name "${processNameClean}" -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty Id`;
+        const args = ['-NoProfile', '-Command', psCommand];
+        const result = execFileSync('powershell.exe', args, {
           encoding: 'utf8',
         });
-        const pidMatch = result.match(/ProcessId=(\d+)/);
-        if (pidMatch) {
-          const pid = parseInt(pidMatch[1], 10);
+        
+        const trimmedResult = result.trim();
+        const pid = parseInt(trimmedResult, 10);
+        
+        if (!isNaN(pid)) {
           this._watchAttachLogger.log(`Found Windows process '${programName}' with PID: ${pid}`);
           return pid;
         }
+        
+        // Fallback: try with .exe extension if not already tried
+        if (!programName.toLowerCase().endsWith('.exe')) {
+          const psCommandExe = `Get-Process -Name "${processNameClean}.exe" -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty Id`;
+          const argsExe = ['-NoProfile', '-Command', psCommandExe];
+          const resultExe = execFileSync('powershell.exe', argsExe, {
+            encoding: 'utf8',
+          });
+          const trimmedResultExe = resultExe.trim();
+          const pidExe = parseInt(trimmedResultExe, 10);
+          
+          if (!isNaN(pidExe)) {
+            this._watchAttachLogger.log(`Found Windows process '${programName}' (with .exe) with PID: ${pidExe}`);
+            return pidExe;
+          }
+        }
+        
+        // Alternative: try tasklist as fallback
+        try {
+          const tasklistArgs = ['-NoProfile', '-Command', `tasklist /FI "IMAGENAME eq ${programName}" /FO CSV | ConvertFrom-Csv | Select-Object -First 1 -ExpandProperty 'PID'`];
+          const tasklistResult = execFileSync('powershell.exe', tasklistArgs, {
+            encoding: 'utf8',
+          });
+          const tasklistPid = parseInt(tasklistResult.trim(), 10);
+          
+          if (!isNaN(tasklistPid)) {
+            this._watchAttachLogger.log(`Found Windows process '${programName}' via tasklist with PID: ${tasklistPid}`);
+            return tasklistPid;
+          }
+        } catch (tasklistError) {
+          // Ignore tasklist errors, we'll log the main error below
+          this._watchAttachLogger.log(`tasklist fallback failed, continuing...`);
+        }
+        
         this._watchAttachLogger.log(`ERROR: Could not find Windows process '${programName}'`);
-        this._watchAttachLogger.log(`wmic output:\n${result}`);
+        this._watchAttachLogger.log(`Get-Process output:\n${result}`);
         return null;
       } catch (error: any) {
         const errorMessage = error instanceof Error ? error.message : String(error);

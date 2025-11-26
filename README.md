@@ -4,6 +4,8 @@
 
 > **Note:** This is a fork of the original [dotnet-watch-attach](https://github.com/Trottero/dotnet-watch-attach) extension by [Trottero](https://github.com/Trottero), with added support for debugging applications running in Docker containers via `pipeTransport`.
 
+It works on Windows and Linux. It hasn't been tested on Mac yet.
+
 `.NET Container Watch Attach` is an extension which supports developers working with the `dotnet watch` ([link](https://docs.microsoft.com/en-us/aspnet/core/tutorials/dotnet-watch?view=aspnetcore-5.0)) command. It is basically a wrapper around the `coreclr` debugger from the C# extension which watches your process list for a given process name, with added support for debugging applications running in Docker containers via `pipeTransport`.
 
 - [Original Extension](https://marketplace.visualstudio.com/items?itemName=Trottero.dotnetwatchattach)
@@ -202,12 +204,14 @@ Start debugging once the container is already running. If you want the container
 - ✅ Source file mapping for container/remote debugging
 - ✅ Automatic task execution (disabled when using `pipeTransport`)
 - ✅ Retry mechanism with configurable polling interval
-- ✅ It works with Cursor, which works with netcoredbg.
+- ✅ It works with Cursor, which works with netcoredbg, But it doesn't work with containers unless you use the dev containers extension.
 
 ## Known Issues
 
 - Debugging with containers has only been tested on Linux.
 
+- Normal debug tested with Windows and Linux. 
+- Might be issues on Mac. The original ran on Mac, but I haven't been able to test it after my changes. I modified the part that obtains the process ID based on the process name. If any Mac user could look into this for me, I would appreciate it.
 - There is a race condition where the extension checks if the process exists, and if it does it will try to start a debug session moments later. If during that time the process is killed (by rebuilding for example) the debugger will fail to attach and terminate.
 
 Please create an [issue / PR](https://github.com/Trottero/dotnet-watch-attach/issues) for any problems you may encounter.
